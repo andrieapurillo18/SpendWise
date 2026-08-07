@@ -1,0 +1,720 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SpendWise PH - Smart Budget Tracker</title>
+  <!-- Tailwind CSS Play CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Chart.js CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <!-- SheetJS (XLSX) CDN for Reading Excel Files -->
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <!-- Firebase App & Auth SDKs (v9 Compat) -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
+</head>
+<body class="bg-gray-950 text-gray-100 min-h-screen font-sans antialiased pb-12">
+
+  <!-- TOP NAVBAR -->
+  <header class="border-b border-gray-800 bg-gray-900/55 backdrop-blur sticky top-0 z-40">
+    <div class="max-w-5xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-2">
+        <div class="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center text-gray-950 font-black text-xl">S</div>
+        <span class="text-xl font-bold tracking-tight text-white">SpendWise <span class="text-xs text-emerald-400 uppercase tracking-widest font-semibold">PH</span></span>
+      </div>
+      
+      <div class="flex items-center space-x-3">
+        <button id="authBtn" onclick="loginWithGoogle()" class="bg-amber-500 hover:bg-amber-400 text-gray-950 text-xs font-bold px-4 py-1.5 rounded-lg transition">
+          Sign in with Gmail
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-5xl mx-auto px-4 pt-6">
+
+    <!-- SIGN IN BANNER -->
+    <div id="syncBanner" class="bg-amber-500/10 border border-amber-500/20 rounded-2xl p-4 mb-6 text-center">
+        <p class="text-xs text-amber-300 font-medium">Sign in with Google to enable automatic cloud sync across all your devices.</p>
+        <button onclick="loginWithGoogle()" class="mt-2 bg-amber-500 hover:bg-amber-400 text-gray-950 font-bold text-xs px-4 py-1.5 rounded-lg transition">
+          Sign in with Gmail
+        </button>
+    </div>
+
+    <!-- SUMMARY METRICS PANEL -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-4">
+        <div>
+          <div class="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1">SAFE TO SPEND THIS MONTH</div>
+          <div class="text-4xl font-extrabold text-white" id="safeToSpend">₱0</div>
+        </div>
+        <div class="flex items-center gap-2">
+          <button onclick="manualCloudSync()" id="syncDataBtn" class="bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-semibold px-4 py-2.5 rounded-xl transition flex items-center gap-2 shadow-lg">
+            <span>🔄</span> <span id="syncBtnText">Sync to Cloud and Other Devices</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- ACCOUNTS HEADER & GRID -->
+      <div class="flex justify-between items-center mb-3 pt-4 border-t border-gray-800/80">
+        <span class="text-xs font-semibold text-gray-400 uppercase tracking-wider">YOUR ACCOUNTS</span>
+        <button onclick="promptAddAccount()" class="text-xs bg-emerald-500/20 text-emerald-400 hover:bg-emerald-500/30 px-3 py-1.5 rounded-lg font-semibold transition flex items-center gap-1">
+          <span>+</span> Add Bank / E-Wallet
+        </button>
+      </div>
+      
+      <div id="accountsGrid" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <!-- Accounts cards -->
+      </div>
+    </div>
+
+    <!-- BUDGET RATIO & SETUP -->
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+        <h3 class="text-sm font-semibold text-gray-300 mb-4">50 / 30 / 20 Budget Ratio</h3>
+        <div class="h-48 relative flex items-center justify-center">
+          <canvas id="budgetChart"></canvas>
+        </div>
+      </div>
+
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col justify-between">
+        <h3 class="text-sm font-semibold text-gray-300 mb-4">Monthly Budget Setup</h3>
+        <div>
+          <label class="block text-xs text-gray-400 mb-1">Total Expected Monthly Income</label>
+          <div class="flex gap-2 mb-4">
+            <input type="number" id="monthlyIncome" placeholder="e.g. 25000" oninput="updateBudgetTargets()" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
+            <button onclick="saveMonthlyIncome()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
+              Save
+            </button>
+          </div>
+        </div>
+        <div class="space-y-2 text-xs">
+          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
+            <span class="text-blue-400 font-medium">Needs Target (50%):</span>
+            <span id="needsTarget" class="font-bold text-white">₱0</span>
+          </div>
+          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
+            <span class="text-amber-400 font-medium">Wants Target (30%):</span>
+            <span id="wantsTarget" class="font-bold text-white">₱0</span>
+          </div>
+          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
+            <span class="text-emerald-400 font-medium">Savings Target (20%):</span>
+            <span id="savingsTarget" class="font-bold text-white">₱0</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- EXCEL STATEMENT IMPORTER -->
+    <div class="bg-gray-900 border border-emerald-500/30 rounded-2xl p-5 mb-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <div class="flex items-center space-x-2 mb-1">
+            <span class="text-emerald-400 text-lg">📊</span>
+            <h3 class="text-sm font-semibold text-white">Excel Statement Manager</h3>
+          </div>
+          <p class="text-xs text-gray-400">Download matching statement template or upload your consolidated spreadsheet.</p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2 shrink-0">
+          <button onclick="downloadGCashExcelTemplate()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+            📥 Download Excel Template (.xlsx)
+          </button>
+          <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition text-center">
+            <span>📁 Upload Excel Statement</span>
+            <input type="file" id="excelUploader" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleExcelImport(event)">
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <!-- MANUAL TRANSACTION ENTRY -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">Log New Transaction</h3>
+      <form onsubmit="handleAddTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+        <input type="text" id="txTitle" placeholder="Title (e.g. Jollibee, Spotify, Transfer)" required class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        <input type="number" step="0.01" id="txAmount" placeholder="Amount (₱)" required class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        <select id="txAccount" class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        </select>
+        <select id="txCategory" class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+          <option value="Needs">Needs (Expense)</option>
+          <option value="Wants">Wants (Expense)</option>
+          <option value="Savings">Savings (Expense/Fund)</option>
+          <option value="Income">Cash-In / Deposit (Income)</option>
+        </select>
+        <button type="submit" class="sm:col-span-2 md:col-span-4 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs py-2.5 rounded-xl transition">
+          Add Entry
+        </button>
+      </form>
+    </div>
+
+    <!-- SELF-LEARNING FINANCIAL ADVISOR & FREQUENCY OPTIMIZER -->
+    <div class="bg-gradient-to-r from-emerald-900/30 to-teal-900/30 border border-emerald-500/20 rounded-2xl p-6 mb-6">
+      <div class="flex items-center justify-between mb-3">
+        <div class="flex items-center space-x-2">
+          <span class="text-emerald-400 text-xl">🧠</span>
+          <h3 class="text-sm font-semibold text-white">Self-Learning Smart Financial Advisor & Target Checker</h3>
+        </div>
+        <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-medium">Auto-Learning Active</span>
+      </div>
+      <p class="text-xs text-gray-400 mb-4">Automatically scans your Excel uploads and transactions for recurring money drains and compares your category spending against your 50/30/20 targets.</p>
+      
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
+          <h4 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">Top Frequent Money Drains</h4>
+          <div id="frequentDrainsList" class="space-y-2 text-xs text-gray-300">
+            <span class="text-gray-500">Upload or add transactions to analyze patterns...</span>
+          </div>
+        </div>
+        <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-4 flex flex-col justify-between">
+          <div>
+            <h4 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">Smart Cutback & Target Analysis</h4>
+            <div id="smartAdvisorOutput" class="text-xs text-emerald-300 leading-relaxed font-medium space-y-2">
+              System is learning from your habits. Enter your monthly income and upload your Excel statement to generate personalized target insights.
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RECENT TRANSACTIONS TABLE -->
+    <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
+      <h3 class="text-sm font-semibold text-gray-300 mb-4">Recent Activity</h3>
+      <div class="overflow-x-auto">
+        <table class="w-full text-left text-xs">
+          <thead>
+            <tr class="border-b border-gray-800 text-gray-500">
+              <th class="pb-3 font-semibold">TITLE</th>
+              <th class="pb-3 font-semibold">ACCOUNT</th>
+              <th class="pb-3 font-semibold">CATEGORY</th>
+              <th class="pb-3 font-semibold text-right">AMOUNT</th>
+              <th class="pb-3 font-semibold text-center">ACTION</th>
+            </tr>
+          </thead>
+          <tbody id="txTableBody" class="divide-y divide-gray-800/50">
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+
+  <script>
+    const firebaseConfig = {
+      apiKey: "AIzaSyDXbr8qrLgewG65pDerdflOwU_6dw1hF64",
+      authDomain: "spendwise-11cb3.firebaseapp.com",
+      projectId: "spendwise-11cb3",
+      storageBucket: "spendwise-11cb3.firebasestorage.app",
+      messagingSenderId: "986360198793",
+      appId: "1:986360198793:web:e22e84cf65141ebb7a7858"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const auth = firebase.auth();
+    const db = firebase.firestore();
+
+    let currentUser = null;
+    let transactions = [];
+    let accounts = JSON.parse(localStorage.getItem('sw_accounts')) || [
+      { name: 'GCash', balance: 0 },
+      { name: 'Maya', balance: 0 },
+      { name: 'GoTyme', balance: 0 },
+      { name: 'MariBank', balance: 0 },
+      { name: 'BPI', balance: 0 },
+      { name: 'BDO', balance: 0 },
+      { name: 'Metrobank', balance: 0 },
+      { name: 'Landbank', balance: 0 }
+    ];
+    let monthlyIncomeVal = parseFloat(localStorage.getItem('sw_monthly_income')) || 0;
+    let budgetChart = null;
+
+    const sampleTemplateDataset = [
+      { Date: "2026-07-31 08:47 PM", "Title / Description": "Starting Balance", Account: "GCash", Category: "Income", Amount: 330.54, Type: "Credit" },
+      { Date: "2026-07-31 08:48 PM", "Title / Description": "Transfer to 09396123371", Account: "GCash", Category: "Wants", Amount: 500.00, Type: "Debit" },
+      { Date: "2026-08-01 09:55 AM", "Title / Description": "Jollibee Delivery", Account: "GCash", Category: "Wants", Amount: 450.00, Type: "Debit" },
+      { Date: "2026-08-01 10:41 AM", "Title / Description": "Payment to Spotify Subscription", Account: "GCash", Category: "Wants", Amount: 149.00, Type: "Debit" },
+      { Date: "2026-08-02 12:21 PM", "Title / Description": "Jollibee Burger Value Meal", Account: "GCash", Category: "Wants", Amount: 220.00, Type: "Debit" },
+      { Date: "2026-08-03 01:58 PM", "Title / Description": "Bills Payment toMeralco", Account: "GCash", Category: "Needs", Amount: 2140.00, Type: "Debit" },
+      { Date: "2026-08-04 08:15 PM", "Title / Description": "Transfer to 09396123371", Account: "GCash", Category: "Wants", Amount: 300.00, Type: "Debit" }
+    ];
+
+    function downloadGCashExcelTemplate() {
+      const worksheet = XLSX.utils.json_to_sheet(sampleTemplateDataset);
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "Statement");
+      XLSX.writeFile(workbook, "Statement_Template_PH.xlsx");
+    }
+    window.downloadGCashExcelTemplate = downloadGCashExcelTemplate;
+
+    const provider = new firebase.auth.GoogleAuthProvider();
+
+    function loginWithGoogle() {
+        auth.signInWithPopup(provider).catch((error) => {
+            console.error("Login Error:", error);
+            alert("Google Sign-In Error: " + error.message);
+        });
+    }
+    window.loginWithGoogle = loginWithGoogle;
+
+    function logout() {
+      auth.signOut();
+    }
+
+    auth.onAuthStateChanged(user => {
+      currentUser = user;
+      const authBtn = document.getElementById('authBtn');
+      const syncBanner = document.getElementById('syncBanner');
+
+      if (user) {
+        if (authBtn) {
+          authBtn.innerText = "Sign Out (" + (user.displayName ? user.displayName.split(' ')[0] : user.email.split('@')[0]) + ")";
+          authBtn.onclick = logout;
+        }
+        if (syncBanner) syncBanner.style.display = 'none';
+        loadCloudData();
+      } else {
+        if (authBtn) {
+          authBtn.innerText = "Sign in with Gmail";
+          authBtn.onclick = loginWithGoogle;
+        }
+        if (syncBanner) syncBanner.style.display = 'block';
+        loadLocalData();
+      }
+    });
+
+    async function manualCloudSync() {
+      if (!currentUser) {
+        alert("Please sign in with your Gmail account first to enable online cloud syncing.");
+        loginWithGoogle();
+        return;
+      }
+
+      const syncBtnText = document.getElementById('syncBtnText');
+      syncBtnText.innerText = "Syncing...";
+
+      try {
+        const batch = db.batch();
+        const userRef = db.collection('users').doc(currentUser.uid);
+        batch.set(userRef, { 
+          accounts: accounts, 
+          monthlyIncome: monthlyIncomeVal,
+          updatedAt: new Date().toISOString() 
+        }, { merge: true });
+
+        transactions.forEach(tx => {
+          const txRef = userRef.collection('transactions').doc(tx.id);
+          batch.set(txRef, tx);
+        });
+
+        await batch.commit();
+        syncBtnText.innerText = "Synced Successfully!";
+        setTimeout(() => { syncBtnText.innerText = "Sync to Cloud and Other Devices"; }, 3000);
+      } catch (err) {
+        console.error("Sync Error:", err);
+        alert("Sync failed: " + err.message);
+        syncBtnText.innerText = "Sync to Cloud and Other Devices";
+      }
+    }
+    window.manualCloudSync = manualCloudSync;
+
+    function saveAccounts() {
+      localStorage.setItem('sw_accounts', JSON.stringify(accounts));
+      renderAccounts();
+      updateAccountDropdowns();
+      if (currentUser) {
+        db.collection('users').doc(currentUser.uid).set({ accounts: accounts }, { merge: true });
+      }
+    }
+
+    function promptAddAccount() {
+      const name = prompt("Enter Bank or E-Wallet Name (e.g. GCash, Maya, GoTyme, BPI, MariBank):");
+      if (!name || !name.trim()) return;
+      const initialBal = parseFloat(prompt("Enter starting balance (₱):") || "0");
+      
+      accounts.push({ 
+        name: name.trim(), 
+        balance: isNaN(initialBal) ? 0 : initialBal 
+      });
+      saveAccounts();
+    }
+
+    function renderAccounts() {
+      const grid = document.getElementById('accountsGrid');
+      grid.innerHTML = accounts.map(acc => `
+        <div class="bg-gray-950/60 border border-gray-800/80 rounded-xl p-4">
+          <div class="flex items-center justify-between text-xs text-gray-400 mb-1">
+            <span class="flex items-center gap-1.5"><span class="w-2 h-2 rounded-full bg-emerald-400"></span>${acc.name}</span>
+          </div>
+          <div class="text-xl font-bold text-white">₱${acc.balance.toLocaleString('en-US', {minimumFractionDigits: 2})}</div>
+        </div>
+      `).join('');
+    }
+
+    function updateAccountDropdowns() {
+      const select = document.getElementById('txAccount');
+      select.innerHTML = accounts.map(acc => `<option value="${acc.name}">${acc.name}</option>`).join('');
+    }
+
+    function updateBudgetTargets() {
+      const incomeInput = document.getElementById('monthlyIncome');
+      monthlyIncomeVal = parseFloat(incomeInput.value) || 0;
+      
+      document.getElementById('needsTarget').innerText = '₱' + (monthlyIncomeVal * 0.50).toLocaleString();
+      document.getElementById('wantsTarget').innerText = '₱' + (monthlyIncomeVal * 0.30).toLocaleString();
+      document.getElementById('savingsTarget').innerText = '₱' + (monthlyIncomeVal * 0.20).toLocaleString();
+      updateChart();
+      runSelfLearningOptimizer();
+    }
+    window.updateBudgetTargets = updateBudgetTargets;
+
+    function saveMonthlyIncome() {
+      const incomeInput = document.getElementById('monthlyIncome');
+      monthlyIncomeVal = parseFloat(incomeInput.value) || 0;
+      localStorage.setItem('sw_monthly_income', monthlyIncomeVal);
+
+      if (currentUser) {
+        db.collection('users').doc(currentUser.uid).set({ 
+          monthlyIncome: monthlyIncomeVal,
+          updatedAt: new Date().toISOString()
+        }, { merge: true }).then(() => {
+          alert("Monthly income saved and synced to cloud successfully!");
+        }).catch(err => {
+          console.error("Error saving income to cloud:", err);
+          alert("Saved locally, but cloud sync failed: " + err.message);
+        });
+      } else {
+        alert("Monthly income saved successfully!");
+      }
+      updateBudgetTargets();
+    }
+    window.saveMonthlyIncome = saveMonthlyIncome;
+
+    function recalculateBalances() {
+      let totalSpent = 0;
+      transactions.forEach(tx => {
+        if (tx.category !== 'Income') totalSpent += tx.amount;
+      });
+      const safe = monthlyIncomeVal - totalSpent;
+      document.getElementById('safeToSpend').innerText = '₱' + (safe < 0 ? 0 : safe).toLocaleString();
+    }
+
+    function initChart() {
+      const ctx = document.getElementById('budgetChart').getContext('2d');
+      budgetChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+          labels: ['Needs', 'Wants', 'Savings'],
+          datasets: [{
+            data: [50, 30, 20],
+            backgroundColor: ['#60a5fa', '#fbbf24', '#34d399'],
+            borderWidth: 0
+          }]
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          plugins: {
+            legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } }
+          }
+        }
+      });
+    }
+
+    function updateChart() {
+      if (!budgetChart) return;
+      let needsSpent = 0, wantsSpent = 0, savingsSpent = 0;
+      
+      transactions.forEach(tx => {
+        if (tx.category === 'Needs') needsSpent += tx.amount;
+        else if (tx.category === 'Wants') wantsSpent += tx.amount;
+        else if (tx.category === 'Savings' || tx.category === 'Income') savingsSpent += (tx.category === 'Savings' ? tx.amount : 0);
+      });
+
+      budgetChart.data.datasets[0].data = [
+        Math.max(needsSpent, 1), 
+        Math.max(wantsSpent, 1), 
+        Math.max(savingsSpent, 1)
+      ];
+      budgetChart.update();
+    }
+
+    // SELF-LEARNING FREQUENCY & TARGET CHECKER
+    function runSelfLearningOptimizer() {
+      const drainsContainer = document.getElementById('frequentDrainsList');
+      const advisorOutput = document.getElementById('smartAdvisorOutput');
+
+      if (transactions.length === 0) {
+        drainsContainer.innerHTML = `<span class="text-gray-500">No transactions recorded yet.</span>`;
+        advisorOutput.innerHTML = `System is learning from your habits. Upload your Excel statement to generate personalized insights.`;
+        return;
+      }
+
+      const frequencyMap = {};
+      let totalNeeds = 0;
+      let totalWants = 0;
+      let totalSavings = 0;
+
+      transactions.forEach(tx => {
+        if (tx.category === 'Needs') totalNeeds += tx.amount;
+        if (tx.category === 'Wants') totalWants += tx.amount;
+        if (tx.category === 'Savings') totalSavings += tx.amount;
+
+        if (tx.category === 'Income') return;
+        const key = tx.title.trim().toLowerCase();
+        if (!frequencyMap[key]) {
+          frequencyMap[key] = { title: tx.title, count: 0, totalAmount: 0, category: tx.category };
+        }
+        frequencyMap[key].count += 1;
+        frequencyMap[key].totalAmount += tx.amount;
+      });
+
+      const sortedDrains = Object.values(frequencyMap).sort((a, b) => b.count - a.count || b.totalAmount - a.totalAmount);
+
+      if (sortedDrains.length > 0) {
+        drainsContainer.innerHTML = sortedDrains.slice(0, 4).map(d => `
+          <div class="flex justify-between items-center bg-gray-900 p-2.5 rounded-lg border border-gray-800">
+            <div>
+              <span class="font-semibold text-white">${d.title}</span>
+              <span class="text-[10px] text-gray-400 block">${d.count} time(s) logged (${d.category})</span>
+            </div>
+            <span class="font-bold text-rose-400">₱${d.totalAmount.toLocaleString()}</span>
+          </div>
+        `).join('');
+      } else {
+        drainsContainer.innerHTML = `<span class="text-gray-500">No expense patterns detected yet.</span>`;
+      }
+
+      let messages = [];
+
+      const topDrain = sortedDrains[0];
+      if (topDrain && topDrain.count >= 2) {
+        if (topDrain.title.toLowerCase().includes('transfer') || topDrain.title.toLowerCase().includes('09')) {
+          messages.push(`💡 <span class="text-amber-300">Frequent Transfers:</span> "${topDrain.title}" logged ${topDrain.count}x (₱${topDrain.totalAmount.toLocaleString()}). Consider cutting down peer transfers to protect savings.`);
+        } else if (topDrain.title.toLowerCase().includes('jollibee') || topDrain.title.toLowerCase().includes('mcdonald') || topDrain.title.toLowerCase().includes('burger')) {
+          messages.push(`💡 <span class="text-amber-300">Fast Food Habit:</span> Frequent dining out ("${topDrain.title}") detected ${topDrain.count}x. Lessen these orders to optimize your Wants budget.`);
+        } else if (topDrain.title.toLowerCase().includes('spotify') || topDrain.title.toLowerCase().includes('subscription')) {
+          messages.push(`💡 <span class="text-amber-300">Subscription Check:</span> Recurring item "${topDrain.title}" found ${topDrain.count}x. Audit if you actively use this every month.`);
+        } else {
+          messages.push(`💡 <span class="text-amber-300">Top Money Drain:</span> "${topDrain.title}" has been logged ${topDrain.count} times totaling ₱${topDrain.totalAmount.toLocaleString()}.`);
+        }
+      }
+
+      if (monthlyIncomeVal > 0) {
+        const needsTarget = monthlyIncomeVal * 0.50;
+        const wantsTarget = monthlyIncomeVal * 0.30;
+        const savingsTarget = monthlyIncomeVal * 0.20;
+
+        // Needs Check
+        if (totalNeeds < needsTarget * 0.50) {
+          messages.push(`🟢 <span class="text-blue-300">Needs Status:</span> Your Needs spending (₱${totalNeeds.toLocaleString()}) is <strong>way below</strong> your target (₱${needsTarget.toLocaleString()}). Great job keeping essentials low!`);
+        } else if (totalNeeds > needsTarget) {
+          messages.push(`🔴 <span class="text-rose-400">Needs Alert:</span> You have exceeded your 50% Needs target of ₱${needsTarget.toLocaleString()} (Current: ₱${totalNeeds.toLocaleString()}).`);
+        }
+
+        // Wants Check
+        if (totalWants < wantsTarget * 0.40) {
+          messages.push(`🟢 <span class="text-amber-300">Wants Status:</span> Your Wants spending (₱${totalWants.toLocaleString()}) is <strong>way below</strong> your ₱${wantsTarget.toLocaleString()} limit. Excellent self-control!`);
+        } else if (totalWants > wantsTarget) {
+          messages.push(`🔴 <span class="text-rose-400">Wants Alert:</span> Your Wants spending (₱${totalWants.toLocaleString()}) has gone <strong>way above</strong> your ₱${wantsTarget.toLocaleString()} target limit. Cut back on non-essentials!`);
+        }
+
+        // Savings Check
+        if (totalSavings >= savingsTarget) {
+          messages.push(`🟢 <span class="text-emerald-300">Savings Target Met:</span> You reached or exceeded your 20% savings goal (₱${totalSavings.toLocaleString()} / ₱${savingsTarget.toLocaleString()}).`);
+        } else {
+          messages.push(`⚠️ <span class="text-amber-400">Savings Warning:</span> Your savings (₱${totalSavings.toLocaleString()}) are below your 20% target of ₱${savingsTarget.toLocaleString()}.`);
+        }
+      } else {
+        messages.push(`ℹ️ Enter your Total Expected Monthly Income above and click Save to activate target comparisons.`);
+      }
+
+      advisorOutput.innerHTML = messages.join('<br>');
+    }
+
+    function handleAddTransaction(e) {
+      e.preventDefault();
+      const title = document.getElementById('txTitle').value;
+      const amount = parseFloat(document.getElementById('txAmount').value);
+      const account = document.getElementById('txAccount').value;
+      const category = document.getElementById('txCategory').value;
+
+      const newTx = { id: Date.now().toString(), title, amount, account, category, createdAt: new Date().toISOString() };
+      
+      transactions.unshift(newTx);
+      
+      const acc = accounts.find(a => a.name === account);
+      if (acc) {
+        if (category === 'Income') {
+          acc.balance += amount;
+        } else {
+          acc.balance -= amount;
+        }
+      }
+      saveAccounts();
+
+      if (currentUser) {
+        db.collection('users').doc(currentUser.uid).collection('transactions').doc(newTx.id).set(newTx);
+      } else {
+        localStorage.setItem('sw_txs', JSON.stringify(transactions));
+      }
+
+      e.target.reset();
+      renderTransactions();
+    }
+
+    function deleteTx(id) {
+      const tx = transactions.find(t => t.id === id);
+      if (tx) {
+        const acc = accounts.find(a => a.name === tx.account);
+        if (acc) {
+          if (tx.category === 'Income') acc.balance -= tx.amount;
+          else acc.balance += tx.amount;
+        }
+        saveAccounts();
+      }
+
+      transactions = transactions.filter(t => t.id !== id);
+      if (currentUser) {
+        db.collection('users').doc(currentUser.uid).collection('transactions').doc(id).delete();
+      } else {
+        localStorage.setItem('sw_txs', JSON.stringify(transactions));
+      }
+      renderTransactions();
+    }
+
+    function renderTransactions() {
+      const tbody = document.getElementById('txTableBody');
+      if (transactions.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="py-4 text-center text-gray-500">No transactions logged yet.</td></tr>`;
+      } else {
+        tbody.innerHTML = transactions.map(tx => {
+          const isIncome = tx.category === 'Income';
+          const amountColor = isIncome ? 'text-emerald-400' : 'text-rose-400';
+          const sign = isIncome ? '+' : '-';
+          return `
+            <tr class="hover:bg-gray-800/30">
+              <td class="py-3 font-medium text-white">${tx.title}</td>
+              <td class="py-3 text-gray-400">${tx.account}</td>
+              <td class="py-3"><span class="px-2 py-0.5 rounded text-[10px] bg-gray-800 text-gray-300 border border-gray-700">${tx.category}</span></td>
+              <td class="py-3 text-right font-bold ${amountColor}">${sign}₱${tx.amount.toLocaleString()}</td>
+              <td class="py-3 text-center"><button onclick="deleteTx('${tx.id}')" class="text-red-400 hover:text-red-300">✕</button></td>
+            </tr>
+          `;
+        }).join('');
+      }
+      recalculateBalances();
+      updateChart();
+      runSelfLearningOptimizer();
+    }
+
+    function handleExcelImport(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = new Uint8Array(e.target.result);
+          const workbook = XLSX.read(data, { type: 'array' });
+          const firstSheetName = workbook.SheetNames[0];
+          const worksheet = workbook.Sheets[firstSheetName];
+          const jsonRows = XLSX.utils.sheet_to_json(worksheet);
+
+          if (jsonRows.length === 0) {
+            alert("The uploaded Excel file appears to be empty.");
+            return;
+          }
+
+          let importedCount = 0;
+          jsonRows.forEach(row => {
+            const title = row['Title'] || row['Title / Description'] || row['Description'] || 'Imported Statement Item';
+            const account = row['Account'] || accounts[0].name;
+            const category = row['Category'] || 'Needs';
+            const amount = parseFloat(row['Amount'] || row['Debit'] || row['Credit'] || 0);
+
+            if (amount > 0) {
+              const newTx = {
+                id: (Date.now() + Math.random()).toString(),
+                title: String(title),
+                amount: amount,
+                account: String(account),
+                category: String(category),
+                createdAt: new Date().toISOString()
+              };
+
+              transactions.unshift(newTx);
+
+              const acc = accounts.find(a => a.name === account);
+              if (acc) {
+                if (category === 'Income') acc.balance += amount;
+                else acc.balance -= amount;
+              }
+
+              if (currentUser) {
+                db.collection('users').doc(currentUser.uid).collection('transactions').doc(newTx.id).set(newTx);
+              }
+
+              importedCount++;
+            }
+          });
+
+          saveAccounts();
+          if (!currentUser) {
+            localStorage.setItem('sw_txs', JSON.stringify(transactions));
+          }
+          renderTransactions();
+          alert(`Successfully imported ${importedCount} transactions from statement Excel and updated smart analyzer!`);
+        } catch (err) {
+          console.error(err);
+          alert("Error reading Excel file: " + err.message);
+        }
+      };
+      reader.readAsArrayBuffer(file);
+    }
+
+    function loadLocalData() {
+      transactions = JSON.parse(localStorage.getItem('sw_txs')) || [];
+      monthlyIncomeVal = parseFloat(localStorage.getItem('sw_monthly_income')) || 0;
+      if (monthlyIncomeVal > 0) {
+        document.getElementById('monthlyIncome').value = monthlyIncomeVal;
+      }
+      updateBudgetTargets();
+      renderTransactions();
+    }
+
+    function loadCloudData() {
+      const userRef = db.collection('users').doc(currentUser.uid);
+      
+      userRef.get().then(doc => {
+        if (doc.exists) {
+          const data = doc.data();
+          if (data.accounts) {
+            accounts = data.accounts;
+            saveAccounts();
+          }
+          if (data.monthlyIncome !== undefined) {
+            monthlyIncomeVal = data.monthlyIncome;
+            document.getElementById('monthlyIncome').value = monthlyIncomeVal;
+            localStorage.setItem('sw_monthly_income', monthlyIncomeVal);
+            updateBudgetTargets();
+          }
+        }
+      });
+
+      userRef.collection('transactions').orderBy('createdAt', 'desc')
+        .onSnapshot(snapshot => {
+          transactions = snapshot.docs.map(doc => doc.data());
+          renderTransactions();
+        });
+    }
+
+    window.onload = function() {
+      initChart();
+      renderAccounts();
+      updateAccountDropdowns();
+      loadLocalData();
+    };
+  </script>
+</body>
+</html>
