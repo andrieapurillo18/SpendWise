@@ -72,39 +72,37 @@
       </div>
     </div>
 
-    <!-- BUDGET RATIO & SETUP -->
+    <!-- CUSTOM BUDGET CATEGORIES & SETUP -->
     <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6">
-        <h3 class="text-sm font-semibold text-gray-300 mb-4">50 / 30 / 20 Budget Ratio</h3>
-        <div class="h-48 relative flex items-center justify-center">
-          <canvas id="budgetChart"></canvas>
+      <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col justify-between">
+        <h3 class="text-sm font-semibold text-gray-300 mb-3">Custom Budget Allocation (Total must equal 100%)</h3>
+        <div id="budgetCategoriesList" class="space-y-2.5 mb-4 max-h-56 overflow-y-auto pr-1">
+          <!-- Dynamic budget categories rendered here -->
         </div>
+        <div class="flex gap-2">
+          <button onclick="promptAddBudgetCategory()" class="w-full bg-gray-800 hover:bg-gray-700 text-emerald-400 font-bold text-xs py-2 rounded-xl transition border border-emerald-500/20">
+            + Add Custom Category
+          </button>
+          <button onclick="saveBudgetCategories()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2 rounded-xl transition">
+            Save Ratios
+          </button>
+        </div>
+        <div id="totalPercentageWarning" class="text-[11px] text-amber-400 mt-2 font-medium"></div>
       </div>
 
       <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 flex flex-col justify-between">
-        <h3 class="text-sm font-semibold text-gray-300 mb-4">Monthly Budget Setup</h3>
         <div>
+          <h3 class="text-sm font-semibold text-gray-300 mb-4">Monthly Income & Breakdown Chart</h3>
           <label class="block text-xs text-gray-400 mb-1">Total Expected Monthly Income</label>
           <div class="flex gap-2 mb-4">
             <input type="number" id="monthlyIncome" placeholder="e.g. 25000" oninput="updateBudgetTargets()" class="w-full bg-gray-950 border border-gray-800 rounded-xl px-4 py-2.5 text-sm text-white focus:outline-none focus:border-emerald-500">
             <button onclick="saveMonthlyIncome()" class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs px-4 py-2.5 rounded-xl transition shrink-0">
-              Save
+              Save Income
             </button>
           </div>
         </div>
-        <div class="space-y-2 text-xs">
-          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
-            <span class="text-blue-400 font-medium">Needs Target (50%):</span>
-            <span id="needsTarget" class="font-bold text-white">₱0</span>
-          </div>
-          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
-            <span class="text-amber-400 font-medium">Wants Target (30%):</span>
-            <span id="wantsTarget" class="font-bold text-white">₱0</span>
-          </div>
-          <div class="flex justify-between p-2.5 bg-gray-950/50 rounded-xl border border-gray-800/50">
-            <span class="text-emerald-400 font-medium">Savings Target (20%):</span>
-            <span id="savingsTarget" class="font-bold text-white">₱0</span>
-          </div>
+        <div class="h-44 relative flex items-center justify-center">
+          <canvas id="budgetChart"></canvas>
         </div>
       </div>
     </div>
@@ -120,7 +118,7 @@
           <p class="text-xs text-gray-400">Download matching statement template or upload your consolidated spreadsheet.</p>
         </div>
         <div class="flex flex-wrap items-center gap-2 shrink-0">
-          <button onclick="downloadGCashExcelTemplate()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
+          <button onclick="downloadExcelTemplate()" class="bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition">
             📥 Download Excel Template (.xlsx)
           </button>
           <label class="cursor-pointer bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold px-4 py-2.5 rounded-xl transition text-center">
@@ -135,14 +133,11 @@
     <div class="bg-gray-900 border border-gray-800 rounded-2xl p-6 mb-6">
       <h3 class="text-sm font-semibold text-gray-300 mb-4">Log New Transaction</h3>
       <form onsubmit="handleAddTransaction(event)" class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-        <input type="text" id="txTitle" placeholder="Title (e.g. Jollibee, Spotify, Transfer)" required class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
+        <input type="text" id="txTitle" placeholder="Title (e.g. Jollibee, Spotify, Salary)" required class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
         <input type="number" step="0.01" id="txAmount" placeholder="Amount (₱)" required class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
         <select id="txAccount" class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
         </select>
         <select id="txCategory" class="bg-gray-950 border border-gray-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500">
-          <option value="Needs">Needs (Expense)</option>
-          <option value="Wants">Wants (Expense)</option>
-          <option value="Savings">Savings (Expense/Fund)</option>
           <option value="Income">Cash-In / Deposit (Income)</option>
         </select>
         <button type="submit" class="sm:col-span-2 md:col-span-4 bg-emerald-500 hover:bg-emerald-400 text-gray-950 font-bold text-xs py-2.5 rounded-xl transition">
@@ -160,7 +155,7 @@
         </div>
         <span class="text-[10px] bg-emerald-500/20 text-emerald-300 px-2.5 py-1 rounded-full font-medium">Auto-Learning Active</span>
       </div>
-      <p class="text-xs text-gray-400 mb-4">Automatically scans your Excel uploads and transactions for recurring money drains and compares your category spending against your 50/30/20 targets.</p>
+      <p class="text-xs text-gray-400 mb-4">Automatically scans your custom budget category allocations against actual expenses and monitors recurring money drains.</p>
       
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-4">
@@ -171,9 +166,9 @@
         </div>
         <div class="bg-gray-950/60 border border-gray-800 rounded-xl p-4 flex flex-col justify-between">
           <div>
-            <h4 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">Smart Cutback & Target Analysis</h4>
+            <h4 class="text-xs font-semibold text-gray-300 mb-3 uppercase tracking-wider">Custom Category & Target Analysis</h4>
             <div id="smartAdvisorOutput" class="text-xs text-emerald-300 leading-relaxed font-medium space-y-2">
-              System is learning from your habits. Enter your monthly income and upload your Excel statement to generate personalized target insights.
+              System is learning from your habits. Configure your custom percentages and record transactions to generate tailored insights.
             </div>
           </div>
         </div>
@@ -224,30 +219,31 @@
       { name: 'GoTyme', balance: 0 },
       { name: 'MariBank', balance: 0 },
       { name: 'BPI', balance: 0 },
-      { name: 'BDO', balance: 0 },
-      { name: 'Metrobank', balance: 0 },
-      { name: 'Landbank', balance: 0 }
+      { name: 'BDO', balance: 0 }
     ];
+
+    let budgetCategories = JSON.parse(localStorage.getItem('sw_budget_categories')) || [
+      { name: 'Needs', percentage: 50, color: '#60a5fa' },
+      { name: 'Wants', percentage: 30, color: '#fbbf24' },
+      { name: 'Savings', percentage: 20, color: '#34d399' }
+    ];
+
     let monthlyIncomeVal = parseFloat(localStorage.getItem('sw_monthly_income')) || 0;
     let budgetChart = null;
 
     const sampleTemplateDataset = [
       { Date: "2026-07-31 08:47 PM", "Title / Description": "Starting Balance", Account: "GCash", Category: "Income", Amount: 330.54, Type: "Credit" },
-      { Date: "2026-07-31 08:48 PM", "Title / Description": "Transfer to 09396123371", Account: "GCash", Category: "Wants", Amount: 500.00, Type: "Debit" },
       { Date: "2026-08-01 09:55 AM", "Title / Description": "Jollibee Delivery", Account: "GCash", Category: "Wants", Amount: 450.00, Type: "Debit" },
-      { Date: "2026-08-01 10:41 AM", "Title / Description": "Payment to Spotify Subscription", Account: "GCash", Category: "Wants", Amount: 149.00, Type: "Debit" },
-      { Date: "2026-08-02 12:21 PM", "Title / Description": "Jollibee Burger Value Meal", Account: "GCash", Category: "Wants", Amount: 220.00, Type: "Debit" },
-      { Date: "2026-08-03 01:58 PM", "Title / Description": "Bills Payment toMeralco", Account: "GCash", Category: "Needs", Amount: 2140.00, Type: "Debit" },
-      { Date: "2026-08-04 08:15 PM", "Title / Description": "Transfer to 09396123371", Account: "GCash", Category: "Wants", Amount: 300.00, Type: "Debit" }
+      { Date: "2026-08-03 01:58 PM", "Title / Description": "Bills Payment to Meralco", Account: "GCash", Category: "Needs", Amount: 2140.00, Type: "Debit" }
     ];
 
-    function downloadGCashExcelTemplate() {
+    function downloadExcelTemplate() {
       const worksheet = XLSX.utils.json_to_sheet(sampleTemplateDataset);
       const workbook = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(workbook, worksheet, "Statement");
-      XLSX.writeFile(workbook, "Statement_Template_PH.xlsx");
+      XLSX.writeFile(workbook, "Custom_Statement_Template_PH.xlsx");
     }
-    window.downloadGCashExcelTemplate = downloadGCashExcelTemplate;
+    window.downloadExcelTemplate = downloadExcelTemplate;
 
     const provider = new firebase.auth.GoogleAuthProvider();
 
@@ -301,6 +297,7 @@
         batch.set(userRef, { 
           accounts: accounts, 
           monthlyIncome: monthlyIncomeVal,
+          budgetCategories: budgetCategories,
           updatedAt: new Date().toISOString() 
         }, { merge: true });
 
@@ -330,7 +327,7 @@
     }
 
     function promptAddAccount() {
-      const name = prompt("Enter Bank or E-Wallet Name (e.g. GCash, Maya, GoTyme, BPI, MariBank):");
+      const name = prompt("Enter Bank or E-Wallet Name (e.g. GCash, Maya, GoTyme):");
       if (!name || !name.trim()) return;
       const initialBal = parseFloat(prompt("Enter starting balance (₱):") || "0");
       
@@ -358,13 +355,96 @@
       select.innerHTML = accounts.map(acc => `<option value="${acc.name}">${acc.name}</option>`).join('');
     }
 
+    function renderBudgetCategoriesEditor() {
+      const container = document.getElementById('budgetCategoriesList');
+      container.innerHTML = budgetCategories.map((cat, index) => `
+        <div class="flex items-center gap-2 bg-gray-950/60 p-2.5 rounded-xl border border-gray-800/80">
+          <input type="text" value="${cat.name}" onchange="updateCategoryName(${index}, this.value)" class="bg-gray-900 border border-gray-800 rounded-lg px-2 py-1 text-xs text-white w-1/2 focus:outline-none focus:border-emerald-500">
+          <div class="flex items-center gap-1 w-1/3">
+            <input type="number" value="${cat.percentage}" onchange="updateCategoryPercentage(${index}, this.value)" class="bg-gray-900 border border-gray-800 rounded-lg px-2 py-1 text-xs text-white w-full focus:outline-none focus:border-emerald-500">
+            <span class="text-xs text-gray-400">%</span>
+          </div>
+          ${budgetCategories.length > 1 ? `<button onclick="removeBudgetCategory(${index})" class="text-rose-400 hover:text-rose-300 text-xs px-2 py-1 font-bold">✕</button>` : ''}
+        </div>
+      `).join('');
+
+      updateCategoryDropdowns();
+      validateTotalPercentage();
+    }
+
+    function updateCategoryName(index, val) {
+      if (!val.trim()) return;
+      budgetCategories[index].name = val.trim();
+      updateCategoryDropdowns();
+    }
+
+    function updateCategoryPercentage(index, val) {
+      const num = parseFloat(val);
+      budgetCategories[index].percentage = isNaN(num) ? 0 : num;
+      validateTotalPercentage();
+    }
+
+    function promptAddBudgetCategory() {
+      const name = prompt("Enter new category name (e.g. Investments, Education, Fun):");
+      if (!name || !name.trim()) return;
+      const colors = ['#38bdf8', '#fb7185', '#c084fc', '#f43f5e', '#34d399', '#fbbf24', '#818cf8'];
+      const randomColor = colors[Math.floor(Math.random() * colors.length)];
+      
+      budgetCategories.push({ name: name.trim(), percentage: 0, color: randomColor });
+      renderBudgetCategoriesEditor();
+    }
+
+    function removeBudgetCategory(index) {
+      if (budgetCategories.length <= 1) {
+        alert("You must keep at least one category.");
+        return;
+      }
+      budgetCategories.splice(index, 1);
+      renderBudgetCategoriesEditor();
+    }
+
+    function validateTotalPercentage() {
+      const total = budgetCategories.reduce((sum, c) => sum + (parseFloat(c.percentage) || 0), 0);
+      const warningEl = document.getElementById('totalPercentageWarning');
+      if (total !== 100) {
+        warningEl.innerHTML = `⚠️ Total percentage is ${total}%. It must equal exactly 100%.`;
+        warningEl.className = "text-[11px] text-amber-400 mt-2 font-medium";
+      } else {
+        warningEl.innerHTML = `✅ Total percentage equals 100%. Ready to save!`;
+        warningEl.className = "text-[11px] text-emerald-400 mt-2 font-medium";
+      }
+      return total === 100;
+    }
+
+    function saveBudgetCategories() {
+      const total = budgetCategories.reduce((sum, c) => sum + (parseFloat(c.percentage) || 0), 0);
+      if (total !== 100) {
+        alert(`Cannot save: Total percentage is ${total}%. Please adjust them so they add up to exactly 100%.`);
+        return;
+      }
+
+      localStorage.setItem('sw_budget_categories', JSON.stringify(budgetCategories));
+      if (currentUser) {
+        db.collection('users').doc(currentUser.uid).set({ budgetCategories: budgetCategories }, { merge: true });
+      }
+
+      updateBudgetTargets();
+      alert("Custom budget ratios saved successfully!");
+    }
+    window.saveBudgetCategories = saveBudgetCategories;
+
+    function updateCategoryDropdowns() {
+      const select = document.getElementById('txCategory');
+      let optionsHtml = `<option value="Income">Cash-In / Deposit (Income)</option>`;
+      budgetCategories.forEach(cat => {
+        optionsHtml += `<option value="${cat.name}">${cat.name} (Expense)</option>`;
+      });
+      select.innerHTML = optionsHtml;
+    }
+
     function updateBudgetTargets() {
       const incomeInput = document.getElementById('monthlyIncome');
       monthlyIncomeVal = parseFloat(incomeInput.value) || 0;
-      
-      document.getElementById('needsTarget').innerText = '₱' + (monthlyIncomeVal * 0.50).toLocaleString();
-      document.getElementById('wantsTarget').innerText = '₱' + (monthlyIncomeVal * 0.30).toLocaleString();
-      document.getElementById('savingsTarget').innerText = '₱' + (monthlyIncomeVal * 0.20).toLocaleString();
       updateChart();
       runSelfLearningOptimizer();
     }
@@ -406,10 +486,10 @@
       budgetChart = new Chart(ctx, {
         type: 'doughnut',
         data: {
-          labels: ['Needs', 'Wants', 'Savings'],
+          labels: budgetCategories.map(c => c.name),
           datasets: [{
-            data: [50, 30, 20],
-            backgroundColor: ['#60a5fa', '#fbbf24', '#34d399'],
+            data: budgetCategories.map(c => c.percentage),
+            backgroundColor: budgetCategories.map(c => c.color),
             borderWidth: 0
           }]
         },
@@ -417,7 +497,7 @@
           responsive: true,
           maintainAspectRatio: false,
           plugins: {
-            legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 11 } } }
+            legend: { position: 'bottom', labels: { color: '#9ca3af', font: { size: 10 } } }
           }
         }
       });
@@ -425,19 +505,19 @@
 
     function updateChart() {
       if (!budgetChart) return;
-      let needsSpent = 0, wantsSpent = 0, savingsSpent = 0;
       
+      const spendingMap = {};
+      budgetCategories.forEach(c => { spendingMap[c.name] = 0; });
+
       transactions.forEach(tx => {
-        if (tx.category === 'Needs') needsSpent += tx.amount;
-        else if (tx.category === 'Wants') wantsSpent += tx.amount;
-        else if (tx.category === 'Savings' || tx.category === 'Income') savingsSpent += (tx.category === 'Savings' ? tx.amount : 0);
+        if (spendingMap[tx.category] !== undefined) {
+          spendingMap[tx.category] += tx.amount;
+        }
       });
 
-      budgetChart.data.datasets[0].data = [
-        Math.max(needsSpent, 1), 
-        Math.max(wantsSpent, 1), 
-        Math.max(savingsSpent, 1)
-      ];
+      budgetChart.data.labels = budgetCategories.map(c => c.name);
+      budgetChart.data.datasets[0].data = budgetCategories.map(c => Math.max(spendingMap[c.name] || 0, 1));
+      budgetChart.data.datasets[0].backgroundColor = budgetCategories.map(c => c.color);
       budgetChart.update();
     }
 
@@ -448,19 +528,18 @@
 
       if (transactions.length === 0) {
         drainsContainer.innerHTML = `<span class="text-gray-500">No transactions recorded yet.</span>`;
-        advisorOutput.innerHTML = `System is learning from your habits. Upload your Excel statement to generate personalized insights.`;
+        advisorOutput.innerHTML = `System is learning from your habits. Upload your Excel statement or add entries to generate custom insights.`;
         return;
       }
 
       const frequencyMap = {};
-      let totalNeeds = 0;
-      let totalWants = 0;
-      let totalSavings = 0;
+      const categorySpent = {};
+      budgetCategories.forEach(c => { categorySpent[c.name] = 0; });
 
       transactions.forEach(tx => {
-        if (tx.category === 'Needs') totalNeeds += tx.amount;
-        if (tx.category === 'Wants') totalWants += tx.amount;
-        if (tx.category === 'Savings') totalSavings += tx.amount;
+        if (categorySpent[tx.category] !== undefined) {
+          categorySpent[tx.category] += tx.amount;
+        }
 
         if (tx.category === 'Income') return;
         const key = tx.title.trim().toLowerCase();
@@ -491,44 +570,22 @@
 
       const topDrain = sortedDrains[0];
       if (topDrain && topDrain.count >= 2) {
-        if (topDrain.title.toLowerCase().includes('transfer') || topDrain.title.toLowerCase().includes('09')) {
-          messages.push(`💡 <span class="text-amber-300">Frequent Transfers:</span> "${topDrain.title}" logged ${topDrain.count}x (₱${topDrain.totalAmount.toLocaleString()}). Consider cutting down peer transfers to protect savings.`);
-        } else if (topDrain.title.toLowerCase().includes('jollibee') || topDrain.title.toLowerCase().includes('mcdonald') || topDrain.title.toLowerCase().includes('burger')) {
-          messages.push(`💡 <span class="text-amber-300">Fast Food Habit:</span> Frequent dining out ("${topDrain.title}") detected ${topDrain.count}x. Lessen these orders to optimize your Wants budget.`);
-        } else if (topDrain.title.toLowerCase().includes('spotify') || topDrain.title.toLowerCase().includes('subscription')) {
-          messages.push(`💡 <span class="text-amber-300">Subscription Check:</span> Recurring item "${topDrain.title}" found ${topDrain.count}x. Audit if you actively use this every month.`);
-        } else {
-          messages.push(`💡 <span class="text-amber-300">Top Money Drain:</span> "${topDrain.title}" has been logged ${topDrain.count} times totaling ₱${topDrain.totalAmount.toLocaleString()}.`);
-        }
+        messages.push(`💡 <span class="text-amber-300">Frequent Money Drain:</span> "${topDrain.title}" has been logged ${topDrain.count} times totaling ₱${topDrain.totalAmount.toLocaleString()} under <strong>${topDrain.category}</strong>.`);
       }
 
       if (monthlyIncomeVal > 0) {
-        const needsTarget = monthlyIncomeVal * 0.50;
-        const wantsTarget = monthlyIncomeVal * 0.30;
-        const savingsTarget = monthlyIncomeVal * 0.20;
+        budgetCategories.forEach(cat => {
+          const targetAmount = monthlyIncomeVal * (cat.percentage / 100);
+          const spent = categorySpent[cat.name] || 0;
 
-        // Needs Check
-        if (totalNeeds < needsTarget * 0.50) {
-          messages.push(`🟢 <span class="text-blue-300">Needs Status:</span> Your Needs spending (₱${totalNeeds.toLocaleString()}) is <strong>way below</strong> your target (₱${needsTarget.toLocaleString()}). Great job keeping essentials low!`);
-        } else if (totalNeeds > needsTarget) {
-          messages.push(`🔴 <span class="text-rose-400">Needs Alert:</span> You have exceeded your 50% Needs target of ₱${needsTarget.toLocaleString()} (Current: ₱${totalNeeds.toLocaleString()}).`);
-        }
-
-        // Wants Check
-        if (totalWants < wantsTarget * 0.40) {
-          messages.push(`🟢 <span class="text-amber-300">Wants Status:</span> Your Wants spending (₱${totalWants.toLocaleString()}) is <strong>way below</strong> your ₱${wantsTarget.toLocaleString()} limit. Excellent self-control!`);
-        } else if (totalWants > wantsTarget) {
-          messages.push(`🔴 <span class="text-rose-400">Wants Alert:</span> Your Wants spending (₱${totalWants.toLocaleString()}) has gone <strong>way above</strong> your ₱${wantsTarget.toLocaleString()} target limit. Cut back on non-essentials!`);
-        }
-
-        // Savings Check
-        if (totalSavings >= savingsTarget) {
-          messages.push(`🟢 <span class="text-emerald-300">Savings Target Met:</span> You reached or exceeded your 20% savings goal (₱${totalSavings.toLocaleString()} / ₱${savingsTarget.toLocaleString()}).`);
-        } else {
-          messages.push(`⚠️ <span class="text-amber-400">Savings Warning:</span> Your savings (₱${totalSavings.toLocaleString()}) are below your 20% target of ₱${savingsTarget.toLocaleString()}.`);
-        }
+          if (spent > targetAmount) {
+            messages.push(`🔴 <span class="text-rose-400">${cat.name} Alert:</span> You exceeded your ${cat.percentage}% target limit of ₱${targetAmount.toLocaleString()} (Current: ₱${spent.toLocaleString()}).`);
+          } else {
+            messages.push(`🟢 <span class="text-emerald-300">${cat.name} Status:</span> Well within your ${cat.percentage}% target limit (Spent: ₱${spent.toLocaleString()} / ₱${targetAmount.toLocaleString()}).`);
+          }
+        });
       } else {
-        messages.push(`ℹ️ Enter your Total Expected Monthly Income above and click Save to activate target comparisons.`);
+        messages.push(`ℹ️ Enter your Total Expected Monthly Income above and click Save Income to enable custom category target comparisons.`);
       }
 
       advisorOutput.innerHTML = messages.join('<br>');
@@ -632,7 +689,7 @@
           jsonRows.forEach(row => {
             const title = row['Title'] || row['Title / Description'] || row['Description'] || 'Imported Statement Item';
             const account = row['Account'] || accounts[0].name;
-            const category = row['Category'] || 'Needs';
+            const category = row['Category'] || budgetCategories[0].name;
             const amount = parseFloat(row['Amount'] || row['Debit'] || row['Credit'] || 0);
 
             if (amount > 0) {
@@ -666,7 +723,7 @@
             localStorage.setItem('sw_txs', JSON.stringify(transactions));
           }
           renderTransactions();
-          alert(`Successfully imported ${importedCount} transactions from statement Excel and updated smart analyzer!`);
+          alert(`Successfully imported ${importedCount} transactions from statement Excel!`);
         } catch (err) {
           console.error(err);
           alert("Error reading Excel file: " + err.message);
@@ -681,6 +738,7 @@
       if (monthlyIncomeVal > 0) {
         document.getElementById('monthlyIncome').value = monthlyIncomeVal;
       }
+      renderBudgetCategoriesEditor();
       updateBudgetTargets();
       renderTransactions();
     }
@@ -695,12 +753,17 @@
             accounts = data.accounts;
             saveAccounts();
           }
+          if (data.budgetCategories) {
+            budgetCategories = data.budgetCategories;
+            localStorage.setItem('sw_budget_categories', JSON.stringify(budgetCategories));
+          }
           if (data.monthlyIncome !== undefined) {
             monthlyIncomeVal = data.monthlyIncome;
             document.getElementById('monthlyIncome').value = monthlyIncomeVal;
             localStorage.setItem('sw_monthly_income', monthlyIncomeVal);
-            updateBudgetTargets();
           }
+          renderBudgetCategoriesEditor();
+          updateBudgetTargets();
         }
       });
 
@@ -714,7 +777,7 @@
     window.onload = function() {
       initChart();
       renderAccounts();
-      updateAccountDropdowns();
+      renderBudgetCategoriesEditor();
       loadLocalData();
     };
   </script>
